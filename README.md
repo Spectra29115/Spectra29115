@@ -1,5 +1,3 @@
-## Hi there 👋
-
 # 💫 About Me:
 I am currently a Student working on self-imposed projects. <br>They are basically projects i find from the internet to get skilled.<br>Currently, the field I am good at is Front-end Development but I am continuously learning
 
