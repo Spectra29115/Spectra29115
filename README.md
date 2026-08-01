@@ -1,11 +1,11 @@
 <div align="center">
 
-<!--<h3><code>spectra@github ~ $ ./contributions.sh</code></h3>-->
-<img src="./contrib-heatmap.svg" width="820" />
+<!--<h3><code>spectra@github ~ $ ./contributions.sh</code></h3>
+<img src="./contrib-heatmap.svg" width="820" />-->
 
-<br><br>
+<!--<br><br>
 
-<h3><code>spectra@github ~ $ whoami</code></h3>
+<h3><code>spectra@github ~ $ whoami</code></h3>-->
 
 <table>
 <tr>
