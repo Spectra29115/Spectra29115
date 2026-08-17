@@ -7,7 +7,7 @@
 
 <h3><code>spectra@github ~ $ whoami</code></h3>
 
-<<table>
+<table>
 <tr>
 <td valign="top" align="center"><img src="./profile-ascii.svg" width="330" /></td>
 <td valign="top"><img src="./info-card.svg" width="490" /></td>
