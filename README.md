@@ -12,15 +12,23 @@
 
 <h3><code>spectra@github ~ $ whoami</code></h3>
 
-<table>
+<table width="100%">
 <tr>
 
-<td valign="top" align="center">
-<img src="./profile-ascii.svg" width="330" />
+<td valign="top" align="center" width="40%">
+<img
+  src="./profile-ascii.svg"
+  width="100%"
+  alt="Spectra ASCII"
+/>
 </td>
 
-<td valign="top">
-<img src="./info-card.svg" width="490" />
+<td valign="top" width="60%">
+<img
+  src="./info-card.svg"
+  width="100%"
+  alt="Spectra information"
+/>
 </td>
 
 </tr>
@@ -28,11 +36,16 @@
 <tr>
 
 <td colspan="2" align="center">
-<img src="./black-hole-ascii.gif" width="500" alt="ASCII black hole animation" />
+
+<img
+  src="./black-hole-ascii.gif"
+  width="100%"
+  alt="ASCII black hole animation"
+/>
+
 </td>
 
 </tr>
-
 </table>
 
 </div>
