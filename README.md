@@ -48,9 +48,9 @@
 >
 
 <img
-  src="./black-hole-ascii.gif"
+  src="./input-ascii.gif"
   width="100%"
-  alt="ASCII black hole animation"
+  alt="ASCII animation"
 />
 
 </td>
