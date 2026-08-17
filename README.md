@@ -17,5 +17,15 @@
 </tr>
 </table>
 
+<p align="center">
+
+<img
+  src="https://raw.githubusercontent.com/Spectra29115/Spectra29115/main/contrib-heatmap.svg"
+  alt="Spectra29115 GitHub contribution heatmap"
+  width="770"
+/>
+
+</p>
+
 
 </div>
