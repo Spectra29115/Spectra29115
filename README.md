@@ -15,15 +15,22 @@
 <table width="100%">
 <tr>
 
-<td valign="top" align="center" width="40%">
+<td
+  valign="middle"
+  align="center"
+  width="40%"
+>
 <img
   src="./profile-ascii.svg"
   width="100%"
-  alt="Spectra ASCII"
+  alt="Spectra"
 />
 </td>
 
-<td valign="top" width="60%">
+<td
+  valign="middle"
+  width="60%"
+>
 <img
   src="./info-card.svg"
   width="100%"
@@ -35,7 +42,10 @@
 
 <tr>
 
-<td colspan="2" align="center">
+<td
+  colspan="2"
+  align="center"
+>
 
 <img
   src="./black-hole-ascii.gif"
@@ -46,6 +56,7 @@
 </td>
 
 </tr>
+
 </table>
 
 </div>
