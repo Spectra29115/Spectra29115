@@ -1,129 +1,318 @@
-"""
-render_heatmap_svg.py
-
-Reads data/contributions.json (written by fetch_contributions.py) and draws
-the classic 53-week x 7-day contribution grid as an SVG. Boxes reveal in a
-diagonal, line-after-line slide-down using CSS keyframes -- plays once on
-load, then freezes (no looping "glow"). Adds a Less -> More legend and a
-one-line stats footer.
-
-Usage:
-    python render_heatmap_svg.py
-"""
-
 import json
+import sys
 from pathlib import Path
+from datetime import datetime, timedelta
 
-DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "contributions.json"
-OUT_PATH = Path(__file__).resolve().parent.parent / "contrib-heatmap.svg"
 
-PALETTE = ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353", "#69f0a0"]
+ROOT = Path(__file__).resolve().parent.parent
+
+DATA_FILE = ROOT / "data" / "contributions.json"
+OUTPUT_FILE = ROOT / "contrib-heatmap.svg"
+
+WIDTH = 770
+HEIGHT = 152
 
 CELL = 11
 GAP = 3
-LEFT_PAD = 28
-TOP_PAD = 20
-BOTTOM_PAD = 34
+
+COLORS = {
+    0: "#161b22",
+    1: "#0e4429",
+    2: "#006d32",
+    3: "#26a641",
+    4: "#39d353",
+}
 
 
-def build_weeks(days):
-    """Bucket the flat day list into weeks (columns), Sunday-first."""
-    weeks = []
-    current_week = [None] * 7
-    for d in days:
-        import datetime
-
-        dt = datetime.date.fromisoformat(d["date"])
-        dow = (dt.weekday() + 1) % 7  # convert Mon=0 -> Sun=0
-        if dow == 0 and any(x is not None for x in current_week):
-            weeks.append(current_week)
-            current_week = [None] * 7
-        current_week[dow] = d
-    weeks.append(current_week)
-    return weeks
+def load_data():
+    with open(DATA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
-def level_color(level):
-    level = max(0, min(level, len(PALETTE) - 1))
-    return PALETTE[level]
+def normalize_days(data):
+    return {
+        item["date"]: int(item.get("level", 0))
+        for item in data.get("days", [])
+    }
 
 
-def render(payload):
-    days = payload["days"]
-    stats = payload.get("stats", {})
-    username = payload.get("username", "")
-    weeks = build_weeks(days)
+def get_last_year(days):
+    """
+    Return exactly the latest 365 days ending today.
+    """
+    today = datetime.utcnow().date()
 
-    n_weeks = len(weeks)
-    width = LEFT_PAD + n_weeks * (CELL + GAP)
-    height = TOP_PAD + 7 * (CELL + GAP) + BOTTOM_PAD
+    start = today - timedelta(days=364)
 
-    rects = []
-    delay_step = 0.012  # seconds between diagonal steps
-    for wi, week in enumerate(weeks):
-        for di, day in enumerate(week):
-            if day is None:
-                continue
-            x = LEFT_PAD + wi * (CELL + GAP)
-            y = TOP_PAD + di * (CELL + GAP)
-            color = level_color(day["level"])
-            # Diagonal stagger: earlier columns + earlier rows appear first.
-            delay = (wi + di) * delay_step
-            rects.append(
-                f'<rect class="cell" x="{x}" y="{y}" width="{CELL}" height="{CELL}" '
-                f'rx="2" ry="2" fill="{color}" '
-                f'style="animation-delay:{delay:.3f}s" '
-                f'data-date="{day["date"]}"><title>{day["date"]}: level {day["level"]}</title></rect>'
-            )
+    result = []
 
-    legend_x = width - 150
-    legend_y = height - 14
-    legend_boxes = []
-    for i, color in enumerate(PALETTE):
-        legend_boxes.append(
-            f'<rect x="{legend_x + i * (CELL + 2)}" y="{legend_y}" width="{CELL}" height="{CELL}" '
-            f'rx="2" ry="2" fill="{color}" />'
+    current = start
+
+    while current <= today:
+        date_string = current.isoformat()
+
+        result.append(
+            {
+                "date": date_string,
+                "level": days.get(date_string, 0),
+            }
         )
 
-    total = stats.get("active_days_in_range", 0)
-    streak = stats.get("current_streak", 0)
-    longest = stats.get("longest_streak", 0)
-    footer = (
-        f'{total} active days in the last year &middot; current streak {streak} &middot; longest streak {longest}'
+        current += timedelta(days=1)
+
+    return result
+
+
+def calculate_stats(days):
+    active = sum(1 for d in days if d["level"] > 0)
+
+    current_streak = 0
+
+    for day in reversed(days):
+        if day["level"] > 0:
+            current_streak += 1
+        else:
+            break
+
+    longest_streak = 0
+    running = 0
+
+    for day in days:
+        if day["level"] > 0:
+            running += 1
+            longest_streak = max(longest_streak, running)
+        else:
+            running = 0
+
+    best_day = max(
+        days,
+        key=lambda x: x["level"],
+        default={"date": "N/A", "level": 0},
     )
 
-    svg = f'''<svg viewBox="0 0 {width} {height}" width="{width}" height="{height}"
-     xmlns="http://www.w3.org/2000/svg" font-family="Consolas, 'Courier New', monospace">
+    return {
+        "active": active,
+        "current": current_streak,
+        "longest": longest_streak,
+        "best_day": best_day,
+    }
+
+
+def build_svg(username, days, stats):
+    """
+    GitHub-friendly static SVG.
+
+    IMPORTANT:
+    No JavaScript.
+    No CSS animation.
+    No SMIL animation.
+    """
+
+    # Find the Sunday before/at the start date.
+    first_date = datetime.strptime(
+        days[0]["date"],
+        "%Y-%m-%d",
+    ).date()
+
+    first_sunday = first_date - timedelta(
+        days=(first_date.weekday() + 1) % 7
+    )
+
+    # Create a lookup table.
+    lookup = {
+        d["date"]: d["level"]
+        for d in days
+    }
+
+    cells = []
+
+    current = first_sunday
+
+    # 53 columns × 7 rows
+    for column in range(53):
+
+        for row in range(7):
+
+            date = current + timedelta(
+                days=column * 7 + row
+            )
+
+            date_string = date.isoformat()
+
+            level = lookup.get(date_string, 0)
+
+            x = 28 + column * (CELL + GAP)
+            y = 20 + row * (CELL + GAP)
+
+            color = COLORS.get(level, COLORS[0])
+
+            cells.append(
+                f'''
+    <rect
+      x="{x}"
+      y="{y}"
+      width="{CELL}"
+      height="{CELL}"
+      rx="2"
+      ry="2"
+      fill="{color}"
+    >
+      <title>{date_string}: contribution level {level}</title>
+    </rect>'''
+            )
+
+    svg = f'''<svg
+  viewBox="0 0 {WIDTH} {HEIGHT}"
+  width="{WIDTH}"
+  height="{HEIGHT}"
+  xmlns="http://www.w3.org/2000/svg"
+  font-family="Consolas, 'Courier New', monospace"
+>
+
   <style>
-    .cell {{
-      opacity: 0;
-      transform: translate(-6px, -6px);
-      animation: reveal 0.5s ease-out forwards;
+    .label {{
+      fill: #8b949e;
+      font-size: 10px;
     }}
-    @keyframes reveal {{
-      from {{ opacity: 0; transform: translate(-6px, -6px); }}
-      to   {{ opacity: 1; transform: translate(0, 0); }}
+
+    .footer {{
+      fill: #c9d1d9;
+      font-size: 11px;
     }}
-    .label {{ fill: #8b949e; font-size: 10px; }}
-    .footer {{ fill: #c9d1d9; font-size: 11px; }}
   </style>
-  <text x="{LEFT_PAD}" y="12" class="label">{username}'s contributions</text>
+
+  <text
+    x="28"
+    y="12"
+    class="label"
+  >
+    {username}'s contributions
+  </text>
+
   <g>
-    {''.join(rects)}
+    {"".join(cells)}
   </g>
-  <text x="{legend_x - 42}" y="{legend_y + 9}" class="label">Less</text>
-  {''.join(legend_boxes)}
-  <text x="{legend_x + len(PALETTE) * (CELL + 2) + 6}" y="{legend_y + 9}" class="label">More</text>
-  <text x="{LEFT_PAD}" y="{height - 4}" class="footer">{footer}</text>
-</svg>'''
+
+  <!-- Legend -->
+
+  <text
+    x="578"
+    y="147"
+    class="label"
+  >
+    Less
+  </text>
+
+  <rect
+    x="620"
+    y="138"
+    width="11"
+    height="11"
+    rx="2"
+    fill="{COLORS[0]}"
+  />
+
+  <rect
+    x="633"
+    y="138"
+    width="11"
+    height="11"
+    rx="2"
+    fill="{COLORS[1]}"
+  />
+
+  <rect
+    x="646"
+    y="138"
+    width="11"
+    height="11"
+    rx="2"
+    fill="{COLORS[2]}"
+  />
+
+  <rect
+    x="659"
+    y="138"
+    width="11"
+    height="11"
+    rx="2"
+    fill="{COLORS[3]}"
+  />
+
+  <rect
+    x="672"
+    y="138"
+    width="11"
+    height="11"
+    rx="2"
+    fill="{COLORS[4]}"
+  />
+
+  <text
+    x="690"
+    y="147"
+    class="label"
+  >
+    More
+  </text>
+
+  <text
+    x="28"
+    y="148"
+    class="footer"
+  >
+    {stats["active"]} active days
+    · current streak {stats["current"]}
+    · longest streak {stats["longest"]}
+  </text>
+
+</svg>
+'''
+
     return svg
 
 
 def main():
-    payload = json.loads(DATA_PATH.read_text())
-    svg = render(payload)
-    OUT_PATH.write_text(svg)
-    print(f"Wrote {OUT_PATH}")
+
+    data = load_data()
+
+    username = data.get(
+        "username",
+        "Spectra29115",
+    )
+
+    all_days = normalize_days(data)
+
+    days = get_last_year(all_days)
+
+    stats = calculate_stats(days)
+
+    svg = build_svg(
+        username,
+        days,
+        stats,
+    )
+
+    OUTPUT_FILE.write_text(
+        svg,
+        encoding="utf-8",
+    )
+
+    print(
+        f"Generated {OUTPUT_FILE}"
+    )
+
+    print(
+        f"Active days: {stats['active']}"
+    )
+
+    print(
+        f"Current streak: {stats['current']}"
+    )
+
+    print(
+        f"Longest streak: {stats['longest']}"
+    )
 
 
 if __name__ == "__main__":
