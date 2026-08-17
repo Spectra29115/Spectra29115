@@ -28,7 +28,7 @@
 <tr>
 
 <td colspan="2" align="center">
-<img src="./black-hole-ascii.gif" width="500" />
+<img src="./black-hole-ascii.gif" width="500" alt="ASCII black hole animation" />
 </td>
 
 </tr>
