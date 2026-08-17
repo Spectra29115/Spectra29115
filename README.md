@@ -5,7 +5,7 @@
 <img
   src="./contrib-heatmap.svg"
   alt="Spectra29115 GitHub contribution heatmap"
-  width="820"
+  width="770"
 />
 
 <br><br>
